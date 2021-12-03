@@ -8,8 +8,8 @@ Add a quality-of-life syntax addition where 'colon methods' can be referred to w
 
 The currently existing colon syntaxes exist for two out of three common use cases of methods:
 
-1. Defining methods ✅ (`function tab:fn(text) print(self.name..text) end`)
-2. Calling methods ✅ (`tab:fn(" is my name")`)
+1. Defining methods ✅ (`function a:b(text) print(self.name..text) end`)
+2. Calling methods ✅ (`a:b(" is my name")`)
 3. Passing methods to higher order functions ❌
 
 This feature would support passing colon methods to higher order functions. This would complete the colon syntax set and make Luau colon methods seamless to use across every common use case. It would improve code readability and reduce verbosity, rendering the two currently-used workarounds unnecessary.
@@ -90,11 +90,33 @@ The expression `a:b` will error if:
 
 Even if `a[b]` evaluates to a non-function, non-functions may still be callable so there is nothing inherently wrong with the expression. If you use the syntax to get a wrapper for a non-function that isn't callable, you'd get an error when you call that wrapper, rather than when that wrapper is generated. The exception is `nil`, which can never be callable, so we just error immediately.
 
-The resulting function is not be included in the stack trace string given by `debug.traceback` as well as the output upon errors. That is to say `(tab:fn)()`, where `fn` errors, produce the same stack trace string as `tab:fn()`.
+The resulting function is not be included in the stack trace string given by `debug.traceback` as well as the output upon errors. That is to say `(a:b)()`, where `b` errors, produce the same stack trace string as `a:b()`.
 
-The resulting function is cached, so `tab:fn == tab:fn --> true`.
+The resulting function is cached, so `a:b == a:b --> true`.
 
-`tab:fn` is not reported as equal to `tab.fn`, so `tab:fn == tab.fn --> false` and, obviously, `rawequal(tab:fn, tab.fn) --> false`.
+`a:b` is not reported as equal to `a.b`, so `a:b == a.b --> false` and, obviously, `rawequal(a:b, a.b) --> false`.
+
+The resulting function only cares about what `a` and `a[b]` are at the time of its generation, i.e.:
+
+```lua
+local tab = {}
+function tab:fn()
+  print(1)
+end
+
+local method = tab:fn
+
+-- Even if we do this:
+function tab:fn()
+  print(2)
+end
+-- or this:
+tab = nil
+
+method() --> 1
+```
+
+So far there is ambiguity in `a:b()`. Is this equivalent to `(a:b)()` or `a.b(a)`? Either way there is no difference in behaviour to the user, but internally speaking, the expression is equivalent to the latter. Furthermore, `a:b` followed by argument parenthesis, a string literal, or a table literal will always be equivalent to the latter, just as it is currently.
 
 ## Drawbacks
 
